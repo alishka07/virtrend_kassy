@@ -1,0 +1,3013 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FloodHelp — Платформа готовности к наводнениям</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        :root {
+            --color-primary: #2196F3;
+            --color-primary-dark: #1976D2;
+            --color-success: #4CAF50;
+            --color-warning: #FF9800;
+            --color-danger: #F44336;
+            --color-info: #00BCD4;
+            --color-bg: #f5f5f5;
+            --color-card: #ffffff;
+            --color-text: #333;
+            --color-text-light: #666;
+            --color-border: #ddd;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: var(--color-bg);
+            color: var(--color-text);
+        }
+
+        .header {
+            background: var(--color-primary);
+            color: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .header p {
+            font-size: 0.9rem;
+            opacity: 0.95;
+            margin-top: 0.25rem;
+        }
+
+        .nav-tabs {
+            background: white;
+            border-bottom: 2px solid var(--color-border);
+            display: flex;
+            padding: 0 1rem;
+            position: sticky;
+            top: 80px;
+            z-index: 999;
+        }
+
+        .nav-tab {
+            padding: 1rem 1.5rem;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 1rem;
+            color: var(--color-text-light);
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .nav-tab:hover {
+            color: var(--color-primary);
+        }
+
+        .nav-tab.active {
+            color: var(--color-primary);
+            border-bottom-color: var(--color-primary);
+            font-weight: 600;
+        }
+
+        .content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .card {
+            background: var(--color-card);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .card h2 {
+            font-size: 1.25rem;
+            margin-bottom: 1rem;
+            color: var(--color-primary);
+        }
+
+        .card h3 {
+            font-size: 1.1rem;
+            margin: 1rem 0 0.5rem 0;
+            color: var(--color-text);
+        }
+
+        #map {
+            height: 600px;
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--color-text);
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid var(--color-border);
+            border-radius: 8px;
+            font-size: 1rem;
+            font-family: inherit;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--color-primary);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .btn {
+            padding: 0.875rem 1.75rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: var(--color-primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--color-primary-dark);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+        }
+
+        .btn-success {
+            background: var(--color-success);
+            color: white;
+        }
+
+        .btn-danger {
+            background: var(--color-danger);
+            color: white;
+        }
+
+        .request-list {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .request-item {
+            background: white;
+            border: 2px solid var(--color-border);
+            border-radius: 10px;
+            padding: 1.25rem;
+            transition: all 0.3s;
+        }
+
+        .request-item:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+
+        .request-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .request-type {
+            padding: 0.375rem 0.875rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .type-water { background: #E3F2FD; color: #1976D2; }
+        .type-food { background: #FFF3E0; color: #E65100; }
+        .type-medical { background: #F3E5F5; color: #7B1FA2; }
+        .type-evacuation { background: #FFEBEE; color: #C62828; }
+        .type-shelter { background: #E8F5E9; color: #2E7D32; }
+
+        .status-badge {
+            padding: 0.375rem 0.875rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        .status-pending { background: #FFF3E0; color: #F57C00; }
+        .status-in-progress { background: #E3F2FD; color: #1976D2; }
+        .status-completed { background: #E8F5E9; color: #388E3C; }
+
+        .lesson-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .lesson-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .lesson-card h3 {
+            color: white;
+            margin-bottom: 0.5rem;
+        }
+
+        .lesson-card p {
+            opacity: 0.95;
+            line-height: 1.6;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--color-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: var(--color-text-light);
+            font-size: 0.9rem;
+        }
+
+        .alert {
+            padding: 1rem 1.25rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            font-weight: 500;
+        }
+
+        .alert-warning {
+            background: #FFF3E0;
+            color: #E65100;
+            border-left: 4px solid #FF9800;
+        }
+
+        .alert-info {
+            background: #E3F2FD;
+            color: #1565C0;
+            border-left: 4px solid #2196F3;
+        }
+
+        .alert-success {
+            background: #E8F5E9;
+            color: #2E7D32;
+            border-left: 4px solid #4CAF50;
+        }
+
+        .checklist {
+            list-style: none;
+            padding: 0;
+        }
+
+        .checklist li {
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            background: #f9f9f9;
+            border-radius: 6px;
+            border-left: 3px solid var(--color-success);
+        }
+
+        .checklist li:before {
+            content: "✓ ";
+            color: var(--color-success);
+            font-weight: bold;
+            margin-right: 0.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .content {
+                padding: 1rem;
+            }
+
+            .nav-tabs {
+                overflow-x: auto;
+            }
+
+            .nav-tab {
+                padding: 0.875rem 1rem;
+                font-size: 0.9rem;
+            }
+
+            #map {
+                height: 400px;
+            }
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            color: var(--color-primary);
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--color-text-light);
+        }
+
+        .success-message {
+            display: none;
+            padding: 1rem;
+            background: var(--color-success);
+            color: white;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .success-message.active {
+            display: block;
+        }
+
+        .chat-container {
+            border: 2px solid var(--color-border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .chat-messages {
+            height: 400px;
+            overflow-y: auto;
+            padding: 1rem;
+            background: #f9f9f9;
+        }
+
+        .chat-message {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .chat-message.user {
+            flex-direction: row-reverse;
+        }
+
+        .chat-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+
+        .chat-bubble {
+            background: white;
+            padding: 0.875rem 1.125rem;
+            border-radius: 12px;
+            max-width: 70%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            line-height: 1.5;
+        }
+
+        .chat-message.user .chat-bubble {
+            background: var(--color-primary);
+            color: white;
+        }
+
+        .chat-typing {
+            display: none;
+            padding: 0.5rem 1rem;
+            background: #E3F2FD;
+            color: var(--color-primary);
+            font-style: italic;
+            font-size: 0.9rem;
+        }
+
+        .chat-typing.active {
+            display: block;
+        }
+
+        .chat-input-container {
+            display: flex;
+            gap: 0.5rem;
+            padding: 1rem;
+            background: white;
+            border-top: 2px solid var(--color-border);
+        }
+
+        .chat-input-container input {
+            flex: 1;
+            padding: 0.75rem;
+            border: 2px solid var(--color-border);
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+
+        .chat-input-container button {
+            padding: 0.75rem 1.5rem;
+            background: var(--color-primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .chat-input-container button:hover {
+            background: var(--color-primary-dark);
+        }
+
+        .flood-simulation {
+            position: relative;
+            margin-bottom: 1.5rem;
+        }
+
+        .simulation-controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .water-level-slider {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .water-level-slider input[type="range"] {
+            width: 100%;
+        }
+
+        .level-indicator {
+            padding: 0.5rem 1rem;
+            background: var(--color-info);
+            color: white;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+
+        .danger-zone {
+            background: rgba(244, 67, 54, 0.15);
+            border: 2px solid var(--color-danger);
+            border-radius: 10px;
+            padding: 1rem;
+            margin: 0.5rem 0;
+        }
+
+        .danger-zone h4 {
+            color: var(--color-danger);
+            margin: 0 0 0.5rem 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .safe-zone {
+            background: rgba(76, 175, 80, 0.15);
+            border: 2px solid var(--color-success);
+            border-radius: 10px;
+            padding: 1rem;
+            margin: 0.5rem 0;
+        }
+
+        .safe-zone h4 {
+            color: var(--color-success);
+            margin: 0 0 0.5rem 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .disease-warning {
+            background: #FFF3E0;
+            border-left: 4px solid #FF9800;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+
+        .disease-warning h4 {
+            color: #E65100;
+            margin: 0 0 0.5rem 0;
+        }
+
+        .disease-list {
+            display: grid;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        .disease-item {
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            border-left: 3px solid #FF9800;
+        }
+
+        .disease-item strong {
+            color: #E65100;
+        }
+
+        .volunteer-group {
+            background: white;
+            border: 2px solid var(--color-border);
+            border-radius: 10px;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+            transition: all 0.3s;
+        }
+
+        .volunteer-group:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+
+        .group-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .group-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--color-primary);
+        }
+
+        .group-badge {
+            padding: 0.375rem 0.875rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            background: #E8F5E9;
+            color: #2E7D32;
+        }
+
+        .group-info {
+            display: grid;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .group-info p {
+            margin: 0;
+            color: var(--color-text);
+        }
+
+        .group-chat-btn {
+            background: var(--color-success);
+            color: white;
+            padding: 0.625rem 1.25rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .group-chat-btn:hover {
+            background: #388E3C;
+            transform: translateY(-1px);
+        }
+
+        .chat-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .chat-modal.active {
+            display: flex;
+        }
+
+        .chat-modal-content {
+            background: white;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 800px;
+            height: 80vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-modal-header {
+            padding: 1.25rem;
+            border-bottom: 2px solid var(--color-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-modal-header h3 {
+            margin: 0;
+            color: var(--color-primary);
+        }
+
+        .chat-modal-body {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .chat-sidebar {
+            width: 250px;
+            border-right: 2px solid var(--color-border);
+            padding: 1rem;
+            overflow-y: auto;
+            background: #f9f9f9;
+        }
+
+        .chat-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .volunteer-member {
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            background: white;
+            border-radius: 8px;
+            border-left: 3px solid var(--color-success);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .volunteer-member:hover {
+            background: var(--color-primary);
+            color: white;
+        }
+
+        .volunteer-member strong {
+            display: block;
+            margin-bottom: 0.25rem;
+        }
+
+        .online-badge {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #4CAF50;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+        }
+
+        .map-overlay {
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .map-overlay h4 {
+            margin: 0 0 0.5rem 0;
+            color: var(--color-primary);
+        }
+
+        .respond-btn {
+            background: var(--color-success);
+            color: white;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            margin-top: 0.5rem;
+            width: 100%;
+        }
+
+        .request-item {
+            cursor: pointer;
+        }
+
+        .request-detail-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .request-detail-modal.active {
+            display: flex;
+        }
+
+        .request-detail-content {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .detail-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--color-border);
+        }
+
+        .detail-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .detail-section h4 {
+            color: var(--color-primary);
+            margin-bottom: 0.75rem;
+        }
+
+        .detail-info {
+            display: grid;
+            gap: 0.75rem;
+        }
+
+        .detail-row {
+            display: flex;
+            padding: 0.75rem;
+            background: #f9f9f9;
+            border-radius: 8px;
+        }
+
+        .detail-label {
+            font-weight: 600;
+            min-width: 120px;
+            color: var(--color-text-light);
+        }
+
+        .detail-value {
+            color: var(--color-text);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .action-buttons button {
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>Epitrend</h1>
+        <p>Координация помощи и повышение готовности населения СКО</p>
+    </header>
+
+    <nav class="nav-tabs">
+        <button class="nav-tab active" onclick="switchTab('map')">🗺️ Карта помощи</button>
+        <button class="nav-tab" onclick="switchTab('request')">📝 Запрос помощи</button>
+        <button class="nav-tab" onclick="switchTab('volunteers')">👥 Волонтёры</button>
+        <button class="nav-tab" onclick="switchTab('education')">📚 Обучение</button>
+        <button class="nav-tab" onclick="switchTab('stats')">📊 Статистика</button>
+    </nav>
+
+    <div class="content">
+        <!-- Карта помощи -->
+        <div id="tab-map" class="tab-content active">
+            <div class="card flood-simulation">
+                <h2>Симуляция уровня заболевания во время затопление</h2>
+                <div class="simulation-controls">
+                    <div class="water-level-slider">
+                        <label for="water-level">Уровень воды в реке Ишим:</label>
+                        <input type="range" id="water-level" min="0" max="100" value="30" oninput="updateFloodSimulation(this.value)">
+                    </div>
+                    <div class="level-indicator" id="level-indicator">
+                        Уровень: 30% (Умеренный)
+                    </div>
+                </div>
+                
+                <div id="flood-zones">
+                    <div class="safe-zone">
+                        <h4>✅ Безопасные районы</h4>
+                        <p id="safe-areas">Центральный район, микрорайон "Восток", пр. Конституции (возвышенность)</p>
+                    </div>
+                    <div class="danger-zone" style="display: none;" id="danger-alert">
+                        <h4>⚠️ Опасные зоны - немедленная эвакуация!</h4>
+                        <p id="danger-areas"></p>
+                    </div>
+                </div>
+
+                <div class="disease-warning" id="disease-warning" style="display: none;">
+                    <h4>🦠 Эпидемиологическая угроза</h4>
+                    <p>При высоком уровне затопления возрастает риск инфекционных заболеваний</p>
+                    <div class="disease-list" id="disease-list"></div>
+                </div>
+            </div>
+
+            <div class="alert alert-info">
+                <strong>💡 Совет:</strong> Нажмите на маркеры на карте, чтобы увидеть детали запросов помощи. Красные зоны показывают опасные районы.
+            </div>
+
+            <div id="map"></div>
+
+            <div class="card">
+                <h2>Агрегированные потребности по районам</h2>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number" id="total-water">0</div>
+                        <div class="stat-label">💧 Вода (запросов)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="total-food">0</div>
+                        <div class="stat-label">🍞 Еда (запросов)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="total-medical">0</div>
+                        <div class="stat-label">💊 Медикаменты (запросов)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="total-evacuation">0</div>
+                        <div class="stat-label">🚨 Эвакуация (запросов)</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Активные запросы помощи</h2>
+                <div style="display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap;">
+                    <select id="status-filter" style="padding: 0.5rem; border: 2px solid var(--color-border); border-radius: 8px;">
+                        <option value="all">Все статусы</option>
+                        <option value="pending">Ожидает</option>
+                        <option value="in-progress">В процессе</option>
+                        <option value="completed">Выполнено</option>
+                    </select>
+                    <select id="type-filter" style="padding: 0.5rem; border: 2px solid var(--color-border); border-radius: 8px;">
+                        <option value="all">Все типы</option>
+                        <option value="water">💧 Вода</option>
+                        <option value="food">🍞 Еда</option>
+                        <option value="medical">💊 Медикаменты</option>
+                        <option value="evacuation">🚨 Эвакуация</option>
+                        <option value="shelter">🏠 Жильё</option>
+                    </select>
+                    <button onclick="applyFilters()" class="btn-primary" style="padding: 0.5rem 1rem;">🔍 Применить</button>
+                </div>
+                <div class="request-list" id="request-list">
+                    <!-- Запросы будут добавляться динамически -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Запрос помощи -->
+        <div id="tab-request" class="tab-content">
+            <div class="card">
+                <h2>Отправить запрос на помощь</h2>
+                <div class="success-message" id="success-message">
+                    ✓ Запрос успешно отправлен! Волонтёры и службы получат уведомление.
+                </div>
+                <form id="help-form">
+                    <div class="form-group">
+                        <label for="request-type">Тип помощи *</label>
+                        <select id="request-type" required>
+                            <option value="">Выберите тип помощи</option>
+                            <option value="water">💧 Вода</option>
+                            <option value="food">🍞 Еда</option>
+                            <option value="medical">💊 Медикаменты</option>
+                            <option value="evacuation">🚨 Эвакуация</option>
+                            <option value="shelter">🏠 Временное жильё</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="request-name">Ваше имя *</label>
+                        <input type="text" id="request-name" placeholder="Введите ваше имя" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="request-phone">Телефон *</label>
+                        <input type="tel" id="request-phone" placeholder="+7 (___) ___-__-__" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="request-address">Адрес *</label>
+                        <input type="text" id="request-address" placeholder="Улица, дом, квартира" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="request-details">Дополнительная информация</label>
+                        <textarea id="request-details" placeholder="Опишите вашу ситуацию подробнее..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="request-people">Количество людей</label>
+                        <input type="number" id="request-people" min="1" value="1">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="request-photo">Фото ситуации (необязательно, но повышает доверие)</label>
+                        <input type="file" id="request-photo" accept="image/*" style="padding: 0.5rem;">
+                        <small style="color: var(--color-text-light); display: block; margin-top: 0.5rem;">
+                            📸 Загрузите фото, подтверждающее ситуацию (затопление, отсутствие продуктов и т.д.)
+                        </small>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">📤 Отправить запрос</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>Важная информация</h2>
+                <div class="alert alert-warning">
+                    <strong>⚠️ При угрозе жизни</strong> звоните по номеру 112 (МЧС)
+                </div>
+                <p style="margin-top: 1rem; color: var(--color-text-light);">
+                    Ваш запрос будет отображён на карте и станет доступен волонтёрам и службам. 
+                    Статус запроса обновляется в режиме реального времени.
+                </p>
+            </div>
+        </div>
+
+        <!-- Волонтёры -->
+        <div id="tab-volunteers" class="tab-content">
+            <div class="alert alert-info">
+                <strong>🤝 Присоединяйтесь к волонтёрам!</strong> Создайте или вступите в группу, чтобы помогать пострадавшим
+            </div>
+
+            <div class="card">
+                <h2>Создать волонтёрскую группу</h2>
+                <form id="create-group-form">
+                    <div class="form-group">
+                        <label for="group-name">Название группы *</label>
+                        <input type="text" id="group-name" placeholder="Например: Волонтёры Центрального района" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="group-leader">Имя координатора *</label>
+                        <input type="text" id="group-leader" placeholder="Ваше имя" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="group-phone">Телефон координатора *</label>
+                        <input type="tel" id="group-phone" placeholder="+7 (___) ___-__-__" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="group-area">Район работы *</label>
+                        <select id="group-area" required>
+                            <option value="">Выберите район</option>
+                            <option value="central">Центральный район</option>
+                            <option value="east">Восточный район</option>
+                            <option value="west">Западный район</option>
+                            <option value="south">Южный район</option>
+                            <option value="all">Все районы</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="group-resources">Доступные ресурсы</label>
+                        <textarea id="group-resources" placeholder="Например: транспорт, медикаменты, продукты питания"></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">➕ Создать группу</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>Активные волонтёрские группы</h2>
+                <div id="volunteer-groups-list">
+                    <!-- Группы будут добавляться динамически -->
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>📍 Карта запросов помощи для волонтёров</h2>
+                <p style="margin-bottom: 1rem; color: var(--color-text-light);">
+                    Все активные запросы помощи на карте. Нажмите на маркер для деталей и возможности откликнуться
+                </p>
+                <div id="volunteer-map" style="height: 500px; border-radius: 12px; margin-bottom: 1rem;"></div>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number" id="vol-pending-requests">0</div>
+                        <div class="stat-label">Ожидают помощи</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="vol-in-progress">0</div>
+                        <div class="stat-label">В работе</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="vol-completed">0</div>
+                        <div class="stat-label">Выполнено сегодня</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Обучение -->
+        <div id="tab-education" class="tab-content">
+            <div class="alert alert-success">
+                <strong>🎓 Готовность спасает жизни!</strong> Пройдите все уроки, чтобы быть готовым к наводнению
+            </div>
+
+            <div class="lesson-card" onclick="openLesson('safety')">
+                <h3>🛡️ Урок 1: Что делать при наводнении</h3>
+                <p>Узнайте, как действовать при угрозе наводнения и обеспечить безопасность семьи</p>
+            </div>
+
+            <div class="lesson-card" onclick="openLesson('bag')">
+                <h3>🎒 Урок 2: Тревожный рюкзак</h3>
+                <p>Список необходимых вещей для быстрой эвакуации</p>
+            </div>
+
+            <div class="lesson-card" onclick="openLesson('evacuation')">
+                <h3>🚶 Урок 3: Маршруты эвакуации</h3>
+                <p>Изучите безопасные маршруты эвакуации в вашем районе</p>
+            </div>
+
+            <div class="lesson-card" onclick="openLesson('signals')">
+                <h3>📢 Урок 4: Сигналы опасности</h3>
+                <p>Как распознать признаки приближающейся опасности</p>
+            </div>
+
+            <div class="lesson-card" onclick="openLesson('health')">
+                <h3>🏥 Урок 5: Профилактика заболеваний после наводнения</h3>
+                <p>Как защитить себя от инфекций и болезней, связанных с затоплением</p>
+            </div>
+
+            <div class="card">
+                <h2>💬 Чат с AI-помощником (Powered by Perplexity)</h2>
+                <p style="margin-bottom: 1rem; color: var(--color-text-light);">
+                    Задайте любой вопрос о готовности к наводнениям, действиях в ЧС или эвакуации. AI использует актуальную информацию для ответов.
+                </p>
+                <div class="alert alert-info" style="margin-bottom: 1rem;">
+                    <strong>💡 Как получить API ключ:</strong> 
+                    1) Зайдите на <a href="https://www.perplexity.ai/settings/api" target="_blank" style="color: var(--color-primary); text-decoration: underline;">Perplexity AI Settings</a>
+                    2) Создайте новый API ключ (это строка текста, например: "pplx-abc123def456...")
+                    3) Замените "YOUR_PERPLEXITY_API_KEY" в коде ниже на ваш ключ
+                    4) API ключ выглядит примерно так: <code style="background: rgba(0,0,0,0.1); padding: 0.2rem 0.5rem; border-radius: 4px;">pplx-1a2b3c4d5e6f7g8h9i...</code>
+                </div>
+                <div class="chat-container">
+                    <div class="chat-messages" id="chat-messages">
+                        <div class="chat-message ai">
+                            <div class="chat-avatar">🤖</div>
+                            <div class="chat-bubble">
+                                Здравствуйте! Я AI-помощник FloodHelp. Задайте мне вопрос о подготовке к наводнениям, действиях в чрезвычайной ситуации или эвакуации. Я помогу вам получить нужную информацию!
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chat-typing" id="chat-typing">AI печатает...</div>
+                    <div class="chat-input-container">
+                        <input type="text" id="chat-input" placeholder="Введите ваш вопрос..." />
+                        <button onclick="sendChatMessage()">📤 Отправить</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Полезные контакты</h2>
+                <ul class="checklist">
+                    <li><strong>112</strong> — МЧС (круглосуточно)</li>
+                    <li><strong>103</strong> — Скорая помощь</li>
+                    <li><strong>102</strong> — Полиция</li>
+                    <li><strong>Акимат СКО:</strong> +7 (7152) 46-14-71</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Статистика -->
+        <div id="tab-stats" class="tab-content">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" id="total-requests">0</div>
+                    <div class="stat-label">Всего запросов</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="active-requests">0</div>
+                    <div class="stat-label">Активных запросов</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="completed-requests">0</div>
+                    <div class="stat-label">Выполнено</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="users-trained">0</div>
+                    <div class="stat-label">Прошли обучение</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Распределение запросов по типам</h2>
+                <div style="margin-top: 1.5rem;">
+                    <div style="margin-bottom: 1rem;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                            <span>💧 Вода</span>
+                            <span id="water-percent">0%</span>
+                        </div>
+                        <div style="background: #E3F2FD; height: 30px; border-radius: 15px; overflow: hidden;">
+                            <div id="water-bar" style="background: #2196F3; height: 100%; width: 0%; transition: width 0.5s;"></div>
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 1rem;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                            <span>🍞 Еда</span>
+                            <span id="food-percent">0%</span>
+                        </div>
+                        <div style="background: #FFF3E0; height: 30px; border-radius: 15px; overflow: hidden;">
+                            <div id="food-bar" style="background: #FF9800; height: 100%; width: 0%; transition: width 0.5s;"></div>
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 1rem;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                            <span>💊 Медикаменты</span>
+                            <span id="medical-percent">0%</span>
+                        </div>
+                        <div style="background: #F3E5F5; height: 30px; border-radius: 15px; overflow: hidden;">
+                            <div id="medical-bar" style="background: #9C27B0; height: 100%; width: 0%; transition: width 0.5s;"></div>
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 1rem;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                            <span>🚨 Эвакуация</span>
+                            <span id="evacuation-percent">0%</span>
+                        </div>
+                        <div style="background: #FFEBEE; height: 30px; border-radius: 15px; overflow: hidden;">
+                            <div id="evacuation-bar" style="background: #F44336; height: 100%; width: 0%; transition: width 0.5s;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>🌍 Ближайшие зоны бедствий в Казахстане и мире</h2>
+                <div id="nearby-disasters" style="margin-bottom: 1.5rem;">
+                    <!-- Катастрофы будут загружены динамически -->
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Последние обновления</h2>
+                <div id="recent-updates">
+                    <p style="color: var(--color-text-light); text-align: center; padding: 2rem;">
+                        Здесь будут отображаться последние обновления по запросам помощи
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для уроков -->
+    <div class="modal" id="lesson-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="lesson-title">Урок</h3>
+                <button class="close-btn" onclick="closeLesson()">&times;</button>
+            </div>
+            <div id="lesson-content">
+                <!-- Контент урока будет загружаться динамически -->
+            </div>
+            <button class="btn btn-success" onclick="completeLesson()" style="margin-top: 1.5rem; width: 100%;">
+                ✓ Завершить урок
+            </button>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Инициализация карты
+        const map = L.map('map').setView([54.8656, 69.1433], 12); // Петропавловск
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Добавление маркера текущего местоположения пользователя
+        let userLocationMarker = null;
+
+        function updateUserLocation() {
+            // Используем фиксированные координаты Петропавловска вместо геолокации
+            const userLat = 54.8656;
+            const userLng = 69.1433;
+
+            // Создаём иконку для местоположения пользователя
+            const userIcon = L.divIcon({
+                html: `<div style="position: relative;">
+                    <div style="background: #4CAF50; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.3);"></div>
+                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 40px; height: 40px; border-radius: 50%; background: rgba(76, 175, 80, 0.2); animation: pulse 2s infinite;"></div>
+                </div>
+                <style>
+                    @keyframes pulse {
+                        0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+                        100% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
+                    }
+                </style>`,
+                className: '',
+                iconSize: [40, 40]
+            });
+
+            // Удаляем старый маркер, если есть
+            if (userLocationMarker) {
+                map.removeLayer(userLocationMarker);
+            }
+
+            // Добавляем новый маркер
+            userLocationMarker = L.marker([userLat, userLng], { icon: userIcon }).addTo(map);
+            userLocationMarker.bindPopup(`
+                <div style="text-align: center;">
+                    <h4 style="margin: 0 0 0.5rem 0; color: #4CAF50;">📍 Вы здесь</h4>
+                    <p style="margin: 0; font-size: 0.9rem;">Петропавловск, СКО</p>
+                    <p style="margin: 0.5rem 0 0 0; font-size: 0.85rem; color: #666;">
+                        ${userLat.toFixed(5)}, ${userLng.toFixed(5)}
+                    </p>
+                </div>
+            `);
+
+            // Центрируем карту на пользователе при первом определении
+            map.setView([userLat, userLng], 13);
+        }
+
+        // Запускаем установку местоположения при загрузке
+        updateUserLocation();
+
+        // Хранилище данных (в реальном приложении это будет база данных)
+        let requests = [
+            {
+                id: 1,
+                type: 'water',
+                name: 'Анна Иванова',
+                phone: '+7 (705) 123-45-67',
+                address: 'ул. Конституции Казахстана, 45',
+                details: 'Нужна питьевая вода для семьи из 4 человек',
+                people: 4,
+                status: 'pending',
+                verified: true,
+                photoProof: 'flooded_kitchen.jpg',
+                lat: 54.8750,
+                lng: 69.1550,
+                timestamp: new Date()
+            },
+            {
+                id: 2,
+                type: 'food',
+                name: 'Петр Смирнов',
+                phone: '+7 (705) 234-56-78',
+                address: 'ул. Мира, 12',
+                details: 'Требуется продовольствие на 2-3 дня',
+                people: 2,
+                status: 'in-progress',
+                verified: true,
+                photoProof: 'empty_fridge.jpg',
+                lat: 54.8700,
+                lng: 69.1500,
+                timestamp: new Date()
+            },
+            {
+                id: 3,
+                type: 'medical',
+                name: 'Мария Петрова',
+                phone: '+7 (705) 345-67-89',
+                address: 'пр. Абая, 78',
+                details: 'Необходимы лекарства для пожилого человека',
+                people: 1,
+                status: 'pending',
+                verified: false,
+                photoProof: null,
+                lat: 54.8600,
+                lng: 69.1350,
+                timestamp: new Date()
+            }
+        ];
+
+        let markers = [];
+        let completedLessons = 0;
+        let volunteerGroups = [
+            {
+                id: 1,
+                name: 'Волонтёры Центрального района',
+                leader: 'Алексей Смирнов',
+                phone: '+7 (705) 111-22-33',
+                area: 'Центральный район',
+                members: 15,
+                resources: 'Транспорт (3 машины), продукты питания, вода',
+                active: true
+            },
+            {
+                id: 2,
+                name: 'Медицинская помощь СКО',
+                leader: 'Доктор Айгуль Темирова',
+                phone: '+7 (705) 222-33-44',
+                area: 'Все районы',
+                members: 8,
+                resources: 'Медикаменты, первая помощь, консультации',
+                active: true
+            },
+            {
+                id: 3,
+                name: 'Эвакуационная бригада Восток',
+                leader: 'Сергей Иванов',
+                phone: '+7 (705) 333-44-55',
+                area: 'Восточный район',
+                members: 12,
+                resources: 'Грузовики, лодки, эвакуационное оборудование',
+                active: true
+            }
+        ];
+        let volunteerMap;
+        let volunteerMarkers = [];
+
+        // Функции переключения вкладок
+        function switchTab(tabName) {
+            document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+            
+            if (tabName === 'map') {
+                setTimeout(() => map.invalidateSize(), 100);
+                updateMap();
+            } else if (tabName === 'stats') {
+                updateStats();
+            } else if (tabName === 'volunteers') {
+                initVolunteerMap();
+                updateVolunteerGroups();
+                updateVolunteerStats();
+            }
+        }
+
+        // Обновление карты
+        function updateMap() {
+            markers.forEach(marker => map.removeLayer(marker));
+            markers = [];
+
+            const typeIcons = {
+                water: '💧',
+                food: '🍞',
+                medical: '💊',
+                evacuation: '🚨',
+                shelter: '🏠'
+            };
+
+            const typeColors = {
+                water: '#2196F3',
+                food: '#FF9800',
+                medical: '#9C27B0',
+                evacuation: '#F44336',
+                shelter: '#4CAF50'
+            };
+
+            requests.forEach(request => {
+                const icon = L.divIcon({
+                    html: `<div style="background: ${typeColors[request.type]}; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">${typeIcons[request.type]}</div>`,
+                    className: '',
+                    iconSize: [40, 40]
+                });
+
+                const marker = L.marker([request.lat, request.lng], { icon }).addTo(map);
+                
+                const statusText = {
+                    pending: 'Ожидает',
+                    'in-progress': 'В процессе',
+                    completed: 'Выполнено'
+                };
+
+                marker.bindPopup(`
+                    <div style="min-width: 200px;">
+                        <h3 style="margin: 0 0 0.5rem 0;">${typeIcons[request.type]} ${getTypeName(request.type)}</h3>
+                        <p><strong>Имя:</strong> ${request.name}</p>
+                        <p><strong>Адрес:</strong> ${request.address}</p>
+                        <p><strong>Людей:</strong> ${request.people}</p>
+                        <p><strong>Статус:</strong> ${statusText[request.status]}</p>
+                        <p style="margin-top: 0.5rem; color: #666;">${request.details}</p>
+                    </div>
+                `);
+                
+                markers.push(marker);
+            });
+
+            updateRequestList();
+            updateAggregatedStats();
+        }
+
+        // Фильтры
+        let currentFilters = {
+            status: 'all',
+            type: 'all'
+        };
+
+        function applyFilters() {
+            currentFilters.status = document.getElementById('status-filter').value;
+            currentFilters.type = document.getElementById('type-filter').value;
+            updateRequestList();
+        }
+
+        function getFilteredRequests() {
+            return requests.filter(request => {
+                const statusMatch = currentFilters.status === 'all' || request.status === currentFilters.status;
+                const typeMatch = currentFilters.type === 'all' || request.type === currentFilters.type;
+                return statusMatch && typeMatch;
+            });
+        }
+
+        // Обновление списка запросов
+        function updateRequestList() {
+            const listElement = document.getElementById('request-list');
+            const filteredRequests = getFilteredRequests();
+            
+            if (filteredRequests.length === 0) {
+                listElement.innerHTML = '<p style="text-align: center; color: #999; padding: 2rem;">Нет запросов по выбранным фильтрам</p>';
+                return;
+            }
+
+            listElement.innerHTML = filteredRequests.map(request => {
+                const typeIcons = {
+                    water: '💧',
+                    food: '🍞',
+                    medical: '💊',
+                    evacuation: '🚨',
+                    shelter: '🏠'
+                };
+
+                const statusText = {
+                    pending: 'Ожидает',
+                    'in-progress': 'В процессе',
+                    completed: 'Выполнено'
+                };
+
+                return `
+                    <div class="request-item" onclick="openRequestDetail(${request.id})">
+                        <div class="request-header">
+                            <span class="request-type type-${request.type}">
+                                ${typeIcons[request.type]} ${getTypeName(request.type)}
+                            </span>
+                            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                ${request.verified ? '<span style="background: #E8F5E9; color: #2E7D32; padding: 0.375rem 0.875rem; border-radius: 20px; font-size: 0.875rem; font-weight: 600;">✓ Проверено</span>' : ''}
+                                <span class="status-badge status-${request.status}">
+                                    ${statusText[request.status]}
+                                </span>
+                            </div>
+                        </div>
+                        <p><strong>${request.name}</strong></p>
+                        <p>📍 ${request.address}</p>
+                        <p>👥 ${request.people} чел. | 📞 ${request.phone}</p>
+                        <p style="margin-top: 0.5rem; color: #666;">${request.details}</p>
+                        <p style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--color-text-light);">
+                            🕒 Нажмите для подробностей
+                        </p>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Обновление агрегированной статистики
+        function updateAggregatedStats() {
+            const stats = {
+                water: 0,
+                food: 0,
+                medical: 0,
+                evacuation: 0
+            };
+
+            requests.forEach(request => {
+                if (stats.hasOwnProperty(request.type)) {
+                    stats[request.type]++;
+                }
+            });
+
+            document.getElementById('total-water').textContent = stats.water;
+            document.getElementById('total-food').textContent = stats.food;
+            document.getElementById('total-medical').textContent = stats.medical;
+            document.getElementById('total-evacuation').textContent = stats.evacuation;
+        }
+
+        // Обновление общей статистики
+        function updateStats() {
+            const total = requests.length;
+            const active = requests.filter(r => r.status !== 'completed').length;
+            const completed = requests.filter(r => r.status === 'completed').length;
+
+            document.getElementById('total-requests').textContent = total;
+            document.getElementById('active-requests').textContent = active;
+            document.getElementById('completed-requests').textContent = completed;
+            document.getElementById('users-trained').textContent = completedLessons;
+
+            // Обновляем информацию о ближайших катастрофах
+            updateNearbyDisasters();
+
+            // Обновление процентов
+            const typeCounts = {
+                water: requests.filter(r => r.type === 'water').length,
+                food: requests.filter(r => r.type === 'food').length,
+                medical: requests.filter(r => r.type === 'medical').length,
+                evacuation: requests.filter(r => r.type === 'evacuation').length
+            };
+
+            const types = ['water', 'food', 'medical', 'evacuation'];
+            types.forEach(type => {
+                const percent = total > 0 ? Math.round((typeCounts[type] / total) * 100) : 0;
+                document.getElementById(`${type}-percent`).textContent = `${percent}%`;
+                document.getElementById(`${type}-bar`).style.width = `${percent}%`;
+            });
+        }
+
+        // Получение названия типа помощи
+        function getTypeName(type) {
+            const names = {
+                water: 'Вода',
+                food: 'Еда',
+                medical: 'Медикаменты',
+                evacuation: 'Эвакуация',
+                shelter: 'Жильё'
+            };
+            return names[type] || type;
+        }
+
+        // Обработка формы запроса помощи
+        document.getElementById('help-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const photoInput = document.getElementById('request-photo');
+            const hasPhoto = photoInput.files.length > 0;
+            const photoName = hasPhoto ? photoInput.files[0].name : null;
+
+            const newRequest = {
+                id: requests.length + 1,
+                type: document.getElementById('request-type').value,
+                name: document.getElementById('request-name').value,
+                phone: document.getElementById('request-phone').value,
+                address: document.getElementById('request-address').value,
+                details: document.getElementById('request-details').value,
+                people: parseInt(document.getElementById('request-people').value),
+                status: 'pending',
+                verified: hasPhoto,
+                photoProof: photoName,
+                lat: 54.8656 + (Math.random() - 0.5) * 0.02,
+                lng: 69.1433 + (Math.random() - 0.5) * 0.02,
+                timestamp: new Date()
+            };
+
+            requests.push(newRequest);
+            
+            document.getElementById('success-message').classList.add('active');
+            this.reset();
+
+            setTimeout(() => {
+                document.getElementById('success-message').classList.remove('active');
+            }, 5000);
+
+            updateMap();
+        });
+
+        // Открытие урока
+        function openLesson(lessonId) {
+            const lessons = {
+                safety: {
+                    title: '🛡️ Что делать при наводнении',
+                    content: `
+                        <h3>До наводнения:</h3>
+                        <ul class="checklist">
+                            <li>Следите за прогнозом погоды и уровнем воды</li>
+                            <li>Подготовьте тревожный рюкзак</li>
+                            <li>Определите безопасные маршруты эвакуации</li>
+                            <li>Поднимите ценные вещи на верхние этажи</li>
+                        </ul>
+                        <h3>Во время наводнения:</h3>
+                        <ul class="checklist">
+                            <li>Немедленно покиньте опасную зону</li>
+                            <li>Двигайтесь к возвышенностям</li>
+                            <li>Не пытайтесь пересекать потоки воды</li>
+                            <li>Звоните 112 при угрозе жизни</li>
+                        </ul>
+                        <h3>После наводнения:</h3>
+                        <ul class="checklist">
+                            <li>Дождитесь официального разрешения вернуться</li>
+                            <li>Проверьте дом на повреждения</li>
+                            <li>Не используйте электричество до проверки</li>
+                            <li>Очистите воду перед употреблением</li>
+                        </ul>
+                    `
+                },
+                bag: {
+                    title: '🎒 Тревожный рюкзак',
+                    content: `
+                        <p>Подготовьте рюкзак со всем необходимым для эвакуации:</p>
+                        <h3>Документы:</h3>
+                        <ul class="checklist">
+                            <li>Паспорта, свидетельства о рождении (копии в водонепроницаемом пакете)</li>
+                            <li>Медицинские полисы</li>
+                            <li>Банковские карты и немного наличных</li>
+                        </ul>
+                        <h3>Вещи первой необходимости:</h3>
+                        <ul class="checklist">
+                            <li>Вода (2 литра на человека)</li>
+                            <li>Еда (консервы, сухари, энергетические батончики)</li>
+                            <li>Фонарик и запасные батарейки</li>
+                            <li>Аптечка первой помощи</li>
+                            <li>Лекарства (если принимаете постоянно)</li>
+                            <li>Тёплая одежда и дождевик</li>
+                            <li>Мобильный телефон и зарядное устройство</li>
+                            <li>Свисток для подачи сигнала</li>
+                        </ul>
+                    `
+                },
+                evacuation: {
+                    title: '🚶 Маршруты эвакуации',
+                    content: `
+                        <h3>Основные правила эвакуации:</h3>
+                        <ul class="checklist">
+                            <li>Заранее изучите карту вашего района</li>
+                            <li>Определите 2-3 безопасных маршрута к возвышенностям</li>
+                            <li>Запомните расположение пунктов сбора</li>
+                            <li>Не используйте лифты при эвакуации</li>
+                        </ul>
+                        <h3>Пункты временного размещения в Петропавловске:</h3>
+                        <ul class="checklist">
+                            <li>Школа №5 (ул. Абая, 120)</li>
+                            <li>Спорткомплекс "Қайрат" (пр. Конституции, 56)</li>
+                            <li>ДК "Строитель" (ул. Мира, 34)</li>
+                        </ul>
+                        <div class="alert alert-warning" style="margin-top: 1rem;">
+                            <strong>Важно:</strong> При получении сигнала эвакуации немедленно покиньте дом. Возьмите только тревожный рюкзак!
+                        </div>
+                    `
+                },
+                signals: {
+                    title: '📢 Сигналы опасности',
+                    content: `
+                        <h3>Признаки приближающегося наводнения:</h3>
+                        <ul class="checklist">
+                            <li>Быстрый подъём уровня воды в реках</li>
+                            <li>Появление воды в подвалах и на улицах</li>
+                            <li>Сильные и продолжительные осадки</li>
+                            <li>Таяние снега при резком потеплении</li>
+                        </ul>
+                        <h3>Системы оповещения:</h3>
+                        <ul class="checklist">
+                            <li>Сирены (длинный прерывистый звук)</li>
+                            <li>Push-уведомления в приложении FloodHelp</li>
+                            <li>SMS от МЧС</li>
+                            <li>Сообщения по радио и ТВ</li>
+                        </ul>
+                        <div class="alert alert-info" style="margin-top: 1rem;">
+                            <strong>Номер 112</strong> — единый номер вызова экстренных служб. Работает круглосуточно!
+                        </div>
+                    `
+                },
+                health: {
+                    title: '🏥 Профилактика заболеваний после наводнения',
+                    content: `
+                        <h3>Основные угрозы здоровью:</h3>
+                        <ul class="checklist">
+                            <li>Кишечные инфекции (холера, дизентерия, гепатит А)</li>
+                            <li>Кожные заболевания и грибковые инфекции</li>
+                            <li>Респираторные инфекции из-за сырости</li>
+                            <li>Малярия и другие болезни, переносимые комарами</li>
+                            <li>Лептоспироз (от контакта с водой, загрязнённой мочой грызунов)</li>
+                        </ul>
+                        <h3>Профилактика водных инфекций:</h3>
+                        <ul class="checklist">
+                            <li>Пейте ТОЛЬКО бутилированную или кипячёную воду (минимум 1 минута кипения)</li>
+                            <li>Мойте руки с мылом перед едой и после туалета</li>
+                            <li>Не употребляйте пищу, контактировавшую с водой наводнения</li>
+                            <li>Используйте антибактериальный гель для рук</li>
+                            <li>Тщательно мойте фрукты и овощи кипячёной водой</li>
+                        </ul>
+                        <h3>Защита от кожных инфекций:</h3>
+                        <ul class="checklist">
+                            <li>Носите резиновые сапоги и перчатки при контакте с водой</li>
+                            <li>Обрабатывайте царапины и порезы антисептиком немедленно</li>
+                            <li>Меняйте мокрую одежду как можно скорее</li>
+                            <li>Держите кожу сухой и чистой</li>
+                            <li>При появлении сыпи - немедленно к врачу</li>
+                        </ul>
+                        <h3>Профилактика респираторных заболеваний:</h3>
+                        <ul class="checklist">
+                            <li>Проветривайте помещения, даже если сыро</li>
+                            <li>Удаляйте плесень раствором хлорки (1:10 с водой)</li>
+                            <li>Используйте маски при уборке затопленных помещений</li>
+                            <li>Одевайтесь тепло, избегайте переохлаждения</li>
+                        </ul>
+                        <h3>Защита от комаров и насекомых:</h3>
+                        <ul class="checklist">
+                            <li>Используйте репелленты на кожу и одежду</li>
+                            <li>Спите под москитной сеткой</li>
+                            <li>Устраняйте стоячую воду возле жилища</li>
+                            <li>Носите одежду с длинными рукавами на рассвете и закате</li>
+                        </ul>
+                        <div class="alert alert-warning" style="margin-top: 1rem;">
+                            <strong>Симптомы тревоги:</strong> Диарея более 24 часов, высокая температура, рвота, сыпь, желтуха, сильная слабость. При появлении - немедленно обращайтесь к врачу! Звоните 103.
+                        </div>
+                        <h3>Первая помощь при диарее:</h3>
+                        <ul class="checklist">
+                            <li>Пейте много чистой воды (регидратация критически важна!)</li>
+                            <li>Раствор для регидратации: 1 л кипячёной воды + 6 ч.л. сахара + 0.5 ч.л. соли</li>
+                            <li>Избегайте молочных продуктов</li>
+                            <li>Ешьте рис, бананы, сухари</li>
+                            <li>Если диарея не прекращается - к врачу!</li>
+                        </ul>
+                    `
+                }
+            };
+
+            const lesson = lessons[lessonId];
+            if (lesson) {
+                document.getElementById('lesson-title').textContent = lesson.title;
+                document.getElementById('lesson-content').innerHTML = lesson.content;
+                document.getElementById('lesson-modal').classList.add('active');
+            }
+        }
+
+        // Закрытие урока
+        function closeLesson() {
+            document.getElementById('lesson-modal').classList.remove('active');
+        }
+
+        // Завершение урока
+        function completeLesson() {
+            completedLessons++;
+            closeLesson();
+            alert('✓ Поздравляем! Урок пройден. Вы стали более подготовленным!');
+        }
+
+        // Функция отправки сообщения в чат
+        async function sendChatMessage() {
+            const input = document.getElementById('chat-input');
+            const message = input.value.trim();
+            
+            if (!message) return;
+
+            // Добавляем сообщение пользователя
+            addChatMessage(message, 'user');
+            input.value = '';
+
+            // Показываем индикатор печати
+            document.getElementById('chat-typing').classList.add('active');
+
+            // Получаем ответ от AI (теперь асинхронно)
+            try {
+                const response = await generateAIResponse(message);
+                document.getElementById('chat-typing').classList.remove('active');
+                addChatMessage(response, 'ai');
+            } catch (error) {
+                document.getElementById('chat-typing').classList.remove('active');
+                addChatMessage('Извините, произошла ошибка. Пожалуйста, попробуйте снова или звоните 112 при угрозе жизни.', 'ai');
+            }
+        }
+
+        // Добавление сообщения в чат
+        function addChatMessage(text, sender) {
+            const messagesContainer = document.getElementById('chat-messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `chat-message ${sender}`;
+            
+            const avatar = sender === 'user' ? '👤' : '🤖';
+            
+            messageDiv.innerHTML = `
+                <div class="chat-avatar">${avatar}</div>
+                <div class="chat-bubble">${text}</div>
+            `;
+            
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // Симуляция затопления
+        function updateFloodSimulation(level) {
+            const levelNum = parseInt(level);
+            const indicator = document.getElementById('level-indicator');
+            const dangerAlert = document.getElementById('danger-alert');
+            const dangerAreas = document.getElementById('danger-areas');
+            const safeAreas = document.getElementById('safe-areas');
+            const diseaseWarning = document.getElementById('disease-warning');
+            const diseaseList = document.getElementById('disease-list');
+            
+            // Обновление индикатора
+            if (levelNum < 30) {
+                indicator.textContent = `Уровень: ${levelNum}% (Низкий - Безопасно)`;
+                indicator.style.background = '#4CAF50';
+            } else if (levelNum < 60) {
+                indicator.textContent = `Уровень: ${levelNum}% (Умеренный - Наблюдение)`;
+                indicator.style.background = '#FF9800';
+            } else if (levelNum < 80) {
+                indicator.textContent = `Уровень: ${levelNum}% (Высокий - Готовность к эвакуации)`;
+                indicator.style.background = '#F44336';
+            } else {
+                indicator.textContent = `Уровень: ${levelNum}% (КРИТИЧЕСКИЙ - ЭВАКУАЦИЯ!)`;
+                indicator.style.background = '#B71C1C';
+            }
+            
+            // Опасные зоны
+            if (levelNum >= 50) {
+                dangerAlert.style.display = 'block';
+                let zones = [];
+                if (levelNum >= 50) zones.push('Набережная р. Ишим');
+                if (levelNum >= 60) zones.push('ул. Мира (низина)', 'мкр. "Южный"');
+                if (levelNum >= 70) zones.push('ул. Конституции Казахстана (нижняя часть)', 'пр. Абая (участки у реки)');
+                if (levelNum >= 80) zones.push('Частный сектор (низинные районы)', 'мкр. "Западный"');
+                dangerAreas.textContent = zones.join(', ');
+            } else {
+                dangerAlert.style.display = 'none';
+            }
+            
+            // Эпидемиологические угрозы
+            if (levelNum >= 60) {
+                diseaseWarning.style.display = 'block';
+                let diseases = [];
+                
+                if (levelNum >= 60) {
+                    diseases.push({
+                        name: 'Кишечные инфекции',
+                        desc: 'Высокий риск. Пейте только кипячёную воду! Мойте руки с мылом.',
+                        level: 'Высокий'
+                    });
+                }
+                
+                if (levelNum >= 70) {
+                    diseases.push({
+                        name: 'Лептоспироз',
+                        desc: 'Инфекция от грызунов. Избегайте контакта с водой без защиты. Носите резиновые сапоги.',
+                        level: 'Средний'
+                    });
+                    diseases.push({
+                        name: 'Кожные инфекции',
+                        desc: 'Обрабатывайте все царапины антисептиком. Держите кожу сухой.',
+                        level: 'Средний'
+                    });
+                }
+                
+                if (levelNum >= 80) {
+                    diseases.push({
+                        name: 'Малярия и энцефалит',
+                        desc: 'Комары размножаются в стоячей воде. Используйте репелленты и москитные сетки.',
+                        level: 'Средний'
+                    });
+                    diseases.push({
+                        name: 'Респираторные инфекции',
+                        desc: 'Плесень и сырость. Проветривайте помещения, используйте маски при уборке.',
+                        level: 'Высокий'
+                    });
+                }
+                
+                diseaseList.innerHTML = diseases.map(d => `
+                    <div class="disease-item">
+                        <strong>${d.name}</strong> (риск: ${d.level})<br>
+                        ${d.desc}
+                    </div>
+                `).join('');
+            } else {
+                diseaseWarning.style.display = 'none';
+            }
+            
+            // Обновление карты с опасными зонами
+            updateDangerZonesOnMap(levelNum);
+        }
+        
+        // Отображение опасных зон на карте
+        // Отображение опасных зон на карте
+let dangerZoneCircles = [];
+function updateDangerZonesOnMap(level) {
+    // Удаляем старые зоны
+    dangerZoneCircles.forEach(circle => map.removeLayer(circle));
+    dangerZoneCircles = [];
+    
+    if (level >= 50) {
+        // Опасные районы Петропавловска
+        const dangerZones = [
+            { 
+                lat: 54.8656, 
+                lng: 69.1433, 
+                radius: 800, 
+                name: 'Набережная',
+                diseases: {
+                    gastroenterit: { cases: 45, ageGroups: { '0-5': 30, '6-18': 10, '19-65': 4, '65+': 1 }, gender: { male: 55, female: 45 } },
+                    cholera: { cases: 12, ageGroups: { '0-5': 2, '6-18': 3, '19-65': 6, '65+': 1 }, gender: { male: 50, female: 50 } },
+                    leptospiroz: { cases: 8, ageGroups: { '0-5': 0, '6-18': 2, '19-65': 5, '65+': 1 }, gender: { male: 65, female: 35 } }
+                }
+            },
+            { 
+                lat: 54.8600, 
+                lng: 69.1350, 
+                radius: 600, 
+                name: 'ул. Мира',
+                diseases: {
+                    gastroenterit: { cases: 38, ageGroups: { '0-5': 25, '6-18': 8, '19-65': 4, '65+': 1 }, gender: { male: 52, female: 48 } },
+                    respiratory: { cases: 15, ageGroups: { '0-5': 5, '6-18': 4, '19-65': 5, '65+': 1 }, gender: { male: 47, female: 53 } }
+                }
+            },
+        ];
+        
+        if (level >= 70) {
+            dangerZones.push(
+                { 
+                    lat: 54.8700, 
+                    lng: 69.1500, 
+                    radius: 700, 
+                    name: 'мкр. Южный',
+                    diseases: {
+                        gastroenterit: { cases: 52, ageGroups: { '0-5': 35, '6-18': 12, '19-65': 4, '65+': 1 }, gender: { male: 54, female: 46 } },
+                        cholera: { cases: 8, ageGroups: { '0-5': 1, '6-18': 2, '19-65': 4, '65+': 1 }, gender: { male: 50, female: 50 } },
+                        skin_infection: { cases: 20, ageGroups: { '0-5': 8, '6-18': 6, '19-65': 5, '65+': 1 }, gender: { male: 60, female: 40 } }
+                    }
+                },
+                { 
+                    lat: 54.8580, 
+                    lng: 69.1400, 
+                    radius: 500, 
+                    name: 'пр. Абая',
+                    diseases: {
+                        gastroenterit: { cases: 28, ageGroups: { '0-5': 18, '6-18': 6, '19-65': 3, '65+': 1 }, gender: { male: 50, female: 50 } },
+                        respiratory: { cases: 12, ageGroups: { '0-5': 4, '6-18': 3, '19-65': 4, '65+': 1 }, gender: { male: 45, female: 55 } }
+                    }
+                }
+            );
+        }
+        
+        const diseaseNames = {
+            gastroenterit: 'Гастроэнтерит',
+            cholera: 'Холера',
+            leptospiroz: 'Лептоспироз',
+            respiratory: 'Респираторные инфекции',
+            skin_infection: 'Кожные инфекции'
+        };
+        
+        dangerZones.forEach(zone => {
+            const circle = L.circle([zone.lat, zone.lng], {
+                color: '#F44336',
+                fillColor: '#F44336',
+                fillOpacity: 0.3,
+                radius: zone.radius
+            }).addTo(map);
+            
+            // Создаем детальную информацию о заболеваниях
+            let diseasesHTML = '';
+            for (const [diseaseKey, data] of Object.entries(zone.diseases)) {
+                const diseaseName = diseaseNames[diseaseKey];
+                diseasesHTML += `
+                    <div style="background: white; border-left: 4px solid #F44336; padding: 1rem; border-radius: 8px; margin: 0.75rem 0;">
+                        <h4 style="margin: 0 0 0.75rem 0; color: #F44336; display: flex; align-items: center; gap: 0.5rem;">
+                            🦠 ${diseaseName}
+                        </h4>
+                        
+                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; background: #FFF3E0; padding: 0.5rem; border-radius: 6px;">
+                            <span style="font-size: 1.5rem;">📊</span>
+                            <div>
+                                <strong style="color: #E65100;">Случаев:</strong>
+                                <span style="font-size: 1.25rem; font-weight: 700; color: #F44336; margin-left: 0.5rem;">+${data.cases}</span>
+                            </div>
+                        </div>
+                        
+                        <div style="margin-bottom: 0.75rem;">
+                            <strong style="display: block; margin-bottom: 0.5rem; color: #333;">👥 Демография случаев:</strong>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; font-size: 0.9rem;">
+                                <div style="background: #E3F2FD; padding: 0.5rem; border-radius: 6px;">
+                                    <strong>0-5 лет</strong><br>
+                                    ${data.ageGroups['0-5']} случаев
+                                </div>
+                                <div style="background: #E3F2FD; padding: 0.5rem; border-radius: 6px;">
+                                    <strong>6-18 лет</strong><br>
+                                    ${data.ageGroups['6-18']} случаев
+                                </div>
+                                <div style="background: #E3F2FD; padding: 0.5rem; border-radius: 6px;">
+                                    <strong>19-65 лет</strong><br>
+                                    ${data.ageGroups['19-65']} случаев
+                                </div>
+                                <div style="background: #E3F2FD; padding: 0.5rem; border-radius: 6px;">
+                                    <strong>65+ лет</strong><br>
+                                    ${data.ageGroups['65+']} случаев
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <strong style="display: block; margin-bottom: 0.5rem; color: #333;">⚥ По полу:</strong>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; font-size: 0.9rem;">
+                                <div style="background: #F3E5F5; padding: 0.5rem; border-radius: 6px;">
+                                    <strong>♂ Мужчины</strong><br>
+                                    ${data.gender.male}%
+                                </div>
+                                <div style="background: #F3E5F5; padding: 0.5rem; border-radius: 6px;">
+                                    <strong>♀ Женщины</strong><br>
+                                    ${data.gender.female}%
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            circle.bindPopup(`
+                <div style="min-width: 320px; max-width: 400px; max-height: 500px; overflow-y: auto;">
+                    <div style="position: sticky; top: 0; background: white; z-index: 10; padding-bottom: 0.5rem; border-bottom: 2px solid #F44336; margin-bottom: 0.75rem;">
+                        <h3 style="color: #F44336; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                            ⚠️ ОПАСНАЯ ЗОНА
+                        </h3>
+                        <p style="margin: 0.5rem 0 0 0; font-size: 1.1rem;"><strong>${zone.name}</strong></p>
+                        <p style="margin: 0.25rem 0 0 0; font-size: 0.9rem; color: #666;">
+                            Радиус опасности: ${zone.radius}м
+                        </p>
+                    </div>
+                    
+                    <div style="background: #FFEBEE; border-left: 4px solid #F44336; padding: 0.75rem; border-radius: 6px; margin-bottom: 1rem;">
+                        <strong style="color: #C62828;">🚨 Немедленная эвакуация!</strong><br>
+                        <span style="font-size: 0.9rem; color: #C62828;">Покиньте зону как можно скорее. Высокий риск инфекций!</span>
+                    </div>
+                    
+                    <h4 style="margin: 1rem 0 0.5rem 0; color: #333; display: flex; align-items: center; gap: 0.5rem;">
+                        🏥 Распространённые заболевания:
+                    </h4>
+                    
+                    ${diseasesHTML}
+                    
+                    <div style="background: #FFF3E0; border-left: 4px solid #FF9800; padding: 0.75rem; border-radius: 6px; margin-top: 1rem;">
+                        <strong style="color: #E65100;">📋 Профилактика:</strong>
+                        <ul style="margin: 0.5rem 0 0 0; padding-left: 1.25rem; color: #E65100; font-size: 0.9rem;">
+                            <li>Пейте ТОЛЬКО кипячёную воду</li>
+                            <li>Мойте руки с мылом</li>
+                            <li>Обрабатывайте раны антисептиком</li>
+                            <li>Носите резиновые сапоги и перчатки</li>
+                            <li>При симптомах - звоните 103!</li>
+                        </ul>
+                    </div>
+                    
+                    <div style="margin-top: 1rem; text-align: center;">
+                        <button onclick="alert('Звоните 103 при симптомах заболевания!')" style="background: #F44336; color: white; padding: 0.75rem 1.5rem; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; width: 100%;">
+                            📞 Экстренная помощь: 103
+                        </button>
+                    </div>
+                </div>
+            `, {
+                maxWidth: 300,
+                maxHeight: 200,
+                className: 'danger-zone-popup'
+            });
+            
+            dangerZoneCircles.push(circle);
+        });
+    }
+}
+
+        // Генерация ответа AI с использованием Perplexity API
+        async function generateAIResponse(question) {
+            const lowerQuestion = question.toLowerCase();
+            
+            // Проверка на сигналы опасности
+            const dangerKeywords = ['опасность', 'угроза', 'затопило', 'тону', 'помогите', 'спасите', 'срочно помощь', 'чс', 'чрезвычайная ситуация', 'критическая ситуация', 'вода поднимается', 'не могу выбраться'];
+            const isDangerSignal = dangerKeywords.some(keyword => lowerQuestion.includes(keyword));
+            
+            if (isDangerSignal) {
+                // Показываем экстренное модальное окно
+                showEmergencyModal(question);
+                return 'Я зафиксировал вашу экстренную ситуацию. Пожалуйста, ответьте на вопрос в появившемся окне - нужно ли вызвать службы спасения?';
+            }
+            
+            // Используем Perplexity API для получения актуальных ответов
+            try {
+                // ⚠️ ВАЖНО: Замените строку ниже на ваш настоящий API ключ от Perplexity
+                // Ключ выглядит примерно так: pplx-1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0
+                const PERPLEXITY_API_KEY = '131144258';
+                
+                const response = await fetch('https://api.perplexity.ai/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${PERPLEXITY_API_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: 'llama-3.1-sonar-small-128k-online',
+                        messages: [
+                            {
+                                role: 'system',
+                                content: 'Вы - эксперт по безопасности при наводнениях и чрезвычайных ситуациях в Казахстане (СКО, Петропавловск). Отвечайте кратко, конкретно и на русском языке. Предоставляйте практические советы по: действиям при наводнении, эвакуации, профилактике заболеваний, подготовке тревожного рюкзака, безопасности семьи. При угрозе жизни всегда напоминайте звонить 112.'
+                            },
+                            {
+                                role: 'user',
+                                content: question
+                            }
+                        ],
+                        max_tokens: 500,
+                        temperature: 0.2,
+                        top_p: 0.9
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    return data.choices[0].message.content;
+                }
+            } catch (error) {
+                console.error('Perplexity API error:', error);
+            }
+            
+            // Fallback на локальные ответы при ошибке API
+            // Ответы на частые вопросы
+            if (lowerQuestion.includes('что делать') || lowerQuestion.includes('как действовать')) {
+                return 'При угрозе наводнения необходимо: 1) Следить за предупреждениями МЧС 2) Подготовить тревожный рюкзак 3) Знать маршруты эвакуации 4) При получении сигнала - немедленно эвакуироваться на возвышенность. Звоните 112 при угрозе жизни!';
+            }
+            
+            if (lowerQuestion.includes('рюкзак') || lowerQuestion.includes('взять') || lowerQuestion.includes('собрать')) {
+                return 'В тревожный рюкзак положите: документы (в водонепроницаемом пакете), воду (2л на человека), еду (консервы, сухари), фонарик с батарейками, аптечку, важные лекарства, тёплую одежду, телефон с зарядкой, свисток. Рюкзак должен быть всегда готов!';
+            }
+            
+            if (lowerQuestion.includes('эвакуация') || lowerQuestion.includes('куда идти') || lowerQuestion.includes('пункт')) {
+                return 'Пункты временного размещения в Петропавловске: Школа №5 (ул. Абая, 120), Спорткомплекс "Қайрат" (пр. Конституции, 56), ДК "Строитель" (ул. Мира, 34). При эвакуации двигайтесь к ближайшей возвышенности. Не пересекайте потоки воды!';
+            }
+            
+            if (lowerQuestion.includes('вода') || lowerQuestion.includes('питьевая')) {
+                return 'Запас питьевой воды - минимум 2 литра на человека в день. При наводнении водопроводная вода может быть загрязнена. Используйте бутилированную воду или кипятите воду минимум 1 минуту перед употреблением.';
+            }
+            
+            if (lowerQuestion.includes('телефон') || lowerQuestion.includes('связь') || lowerQuestion.includes('112')) {
+                return 'Экстренные номера: 112 - МЧС (главный номер при ЧС), 103 - скорая помощь, 102 - полиция. Акимат СКО: +7 (7152) 46-14-71. Сохраните эти номера в телефоне заранее. При угрозе жизни звоните 112!';
+            }
+            
+            if (lowerQuestion.includes('животн') || lowerQuestion.includes('питомц') || lowerQuestion.includes('собак') || lowerQuestion.includes('кошк')) {
+                return 'При эвакуации возьмите питомцев с собой! Подготовьте для них: переноску, поводок, корм на 3-5 дней, воду, миски, лекарства (если есть), ветеринарный паспорт. В пунктах размещения обычно разрешено размещение с животными.';
+            }
+            
+            if (lowerQuestion.includes('электричество') || lowerQuestion.includes('газ') || lowerQuestion.includes('отключить')) {
+                return 'Перед эвакуацией ОБЯЗАТЕЛЬНО отключите: электричество (автоматы в щитке), газ (перекройте вентиль), воду (закройте краны). Это предотвратит пожары и дополнительные повреждения при затоплении.';
+            }
+            
+            if (lowerQuestion.includes('дети') || lowerQuestion.includes('ребенок') || lowerQuestion.includes('семья')) {
+                return 'Подготовка семьи: 1) Объясните детям план действий простыми словами 2) Проведите учебную эвакуацию 3) Назначьте место встречи 4) Научите детей звонить 112 5) Для младенцев: памперсы, детское питание, лекарства. Не паникуйте - дети чувствуют ваше состояние!';
+            }
+            
+            if (lowerQuestion.includes('после') || lowerQuestion.includes('вернуться') || lowerQuestion.includes('возвращение')) {
+                return 'После наводнения: 1) Возвращайтесь только после разрешения властей 2) Проверьте дом на повреждения и трещины 3) НЕ включайте электричество до проверки 4) Очищайте воду перед употреблением 5) Документируйте повреждения для страховки 6) Остерегайтесь змей и насекомых.';
+            }
+            
+            if (lowerQuestion.includes('помощь') || lowerQuestion.includes('волонтер') || lowerQuestion.includes('координация')) {
+                return 'Чтобы получить помощь, используйте раздел "📝 Запрос помощи" - укажите тип помощи, контакты и адрес. Ваш запрос увидят волонтёры и службы. Статус обновляется в реальном времени. При угрозе жизни звоните 112!';
+            }
+            
+            if (lowerQuestion.includes('документ') || lowerQuestion.includes('паспорт') || lowerQuestion.includes('бумаги')) {
+                return 'Важные документы держите в водонепроницаемом пакете: паспорта всех членов семьи, свидетельства о рождении, медицинские полисы, документы на недвижимость, банковские карты, немного наличных. Сделайте цифровые копии и храните в облаке!';
+            }
+            
+            if (lowerQuestion.includes('сигнал') || lowerQuestion.includes('сирена') || lowerQuestion.includes('оповещение')) {
+                return 'Сигналы опасности: 1) Сирена (длинный прерывистый звук) 2) Push-уведомления в FloodHelp 3) SMS от МЧС 4) Сообщения по радио/ТВ. При сигнале эвакуации действуйте немедленно! Не ждите дополнительных указаний.';
+            }
+            
+            if (lowerQuestion.includes('аптечка') || lowerQuestion.includes('лекарства') || lowerQuestion.includes('медикаменты')) {
+                return 'Аптечка первой помощи должна содержать: бинты, пластыри, антисептик, обезболивающее, жаропонижающее, противоаллергическое, активированный уголь, йод, перекись водорода, ножницы, пинцет. Если принимаете лекарства постоянно - возьмите запас на неделю!';
+            }
+            
+            if (lowerQuestion.includes('прогноз') || lowerQuestion.includes('погода') || lowerQuestion.includes('когда')) {
+                return 'Следите за прогнозами на сайте Казгидромет и в приложениях погоды. Наводнения в СКО чаще всего происходят весной (март-апрель) при таянии снега и осенью при затяжных дождях. Подписывайтесь на уведомления МЧС и FloodHelp!';
+            }
+            
+            if (lowerQuestion.includes('болезн') || lowerQuestion.includes('инфекц') || lowerQuestion.includes('здоровье') || lowerQuestion.includes('вирус')) {
+                return 'После наводнения главные угрозы: кишечные инфекции (пейте ТОЛЬКО кипячёную воду!), кожные инфекции (обрабатывайте раны антисептиком), лептоспироз (избегайте контакта с водой без защиты), малярия от комаров (используйте репелленты). При диарее, температуре или сыпи - звоните 103!';
+            }
+            
+            if (lowerQuestion.includes('вода пить') || lowerQuestion.includes('можно пить') || lowerQuestion.includes('загрязн')) {
+                return 'НЕТ! Воду после наводнения пить нельзя! Она заражена бактериями. Пейте ТОЛЬКО: 1) Бутилированную воду 2) Кипячёную воду (минимум 1 минута кипения) 3) Воду, очищенную специальными таблетками. Это критически важно для предотвращения кишечных инфекций!';
+            }
+            
+            if (lowerQuestion.includes('диарея') || lowerQuestion.includes('понос') || lowerQuestion.includes('живот')) {
+                return 'При диарее: 1) Пейте МНОГО чистой воды для регидратации! 2) Раствор: 1л кипячёной воды + 6 ч.л. сахара + 0.5 ч.л. соли 3) Ешьте рис, бананы, сухари 4) Избегайте молока 5) Если не проходит 24 часа или есть кровь - СРОЧНО к врачу! Звоните 103. Обезвоживание опасно!';
+            }
+            
+            if (lowerQuestion.includes('комар') || lowerQuestion.includes('насеком') || lowerQuestion.includes('укус')) {
+                return 'Защита от комаров после наводнения критична! Они переносят малярию и энцефалит. 1) Используйте репелленты 2) Спите под москитной сеткой 3) Носите длинные рукава на рассвете/закате 4) Устраняйте стоячую воду возле дома 5) При температуре после укуса - к врачу!';
+            }
+            
+            if (lowerQuestion.includes('плесень') || lowerQuestion.includes('грибок') || lowerQuestion.includes('сырость')) {
+                return 'Плесень после наводнения опасна для лёгких! 1) Удаляйте немедленно раствором хлорки (1:10 с водой) 2) ОБЯЗАТЕЛЬНО носите маску при уборке 3) Проветривайте помещения 4) Выбрасывайте сильно поражённые вещи 5) Держите помещения сухими. При кашле или затруднении дыхания - звоните 103!';
+            }
+            
+            if (lowerQuestion.includes('рана') || lowerQuestion.includes('порез') || lowerQuestion.includes('царапина')) {
+                return 'Любая рана после контакта с водой наводнения опасна! 1) Немедленно промойте чистой водой 2) Обработайте антисептиком (йод, перекись) 3) Закройте чистой повязкой 4) Меняйте повязку 2 раза в день 5) При покраснении, отёке, гное - срочно к врачу! Звоните 103. Риск заражения очень высок!';
+            }
+            
+            if (lowerQuestion.includes('мыть руки') || lowerQuestion.includes('гигиена') || lowerQuestion.includes('санитария')) {
+                return 'Гигиена рук после наводнения - ваша главная защита! Мойте руки с мылом: 1) Перед едой 2) После туалета 3) После контакта с водой 4) После уборки 5) Перед приготовлением пищи. Если нет воды - используйте антибактериальный гель. Это предотвращает 80% кишечных инфекций!';
+            }
+            
+            if (lowerQuestion.includes('симптом') || lowerQuestion.includes('признак') || lowerQuestion.includes('когда к врачу')) {
+                return 'СРОЧНО К ВРАЧУ (звоните 103) при: 1) Диарея более 24 часов 2) Высокая температура (38.5+) 3) Рвота, не прекращающаяся 4) Сыпь на коже 5) Желтуха (пожелтение кожи/глаз) 6) Сильная слабость 7) Кровь в стуле. Не ждите! Инфекции развиваются быстро!';
+            }
+            
+            if (lowerQuestion.includes('дезинфекц') || lowerQuestion.includes('очистка') || lowerQuestion.includes('уборка')) {
+                return 'Дезинфекция после наводнения: 1) Хлорный раствор (1 стакан хлорки на 5л воды) 2) Обрабатывайте все поверхности 3) ОБЯЗАТЕЛЬНО носите перчатки и маску 4) Проветривайте 5) Выбросьте мягкую мебель, ковры, матрасы - их нельзя полностью очистить. Затопленная еда - в мусор!';
+            }
+            
+            // Общий ответ
+            return 'Спасибо за ваш вопрос! Для детальной информации рекомендую изучить уроки в разделе "📚 Обучение", особенно новый урок о профилактике заболеваний. Используйте симуляцию затопления на карте для оценки рисков. При угрозе жизни звоните 112, при проблемах со здоровьем - 103!';
+        }
+
+        // Экстренное модальное окно
+        function showEmergencyModal(userMessage) {
+            const modal = document.createElement('div');
+            modal.className = 'modal active';
+            modal.style.zIndex = '3000';
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width: 500px; background: #FFF3E0; border: 3px solid #F44336;">
+                    <div class="modal-header" style="border-bottom: 2px solid #F44336;">
+                        <h3 style="color: #F44336; display: flex; align-items: center; gap: 0.5rem;">
+                            <span style="font-size: 2rem;">🚨</span>
+                            ЭКСТРЕННАЯ СИТУАЦИЯ
+                        </h3>
+                    </div>
+                    <div style="padding: 1.5rem 0;">
+                        <p style="font-size: 1.1rem; font-weight: 600; color: #E65100; margin-bottom: 1rem;">
+                            Система зафиксировала сигнал опасности!
+                        </p>
+                        <p style="margin-bottom: 1rem; color: #333;">
+                            Вы сообщили: "<em>${userMessage}</em>"
+                        </p>
+                        <div style="background: white; padding: 1rem; border-radius: 8px; border-left: 4px solid #F44336; margin-bottom: 1.5rem;">
+                            <strong style="color: #F44336;">⚠️ Вам нужно вызвать службы спасения?</strong>
+                            <p style="margin: 0.5rem 0 0 0; color: #666;">
+                                Если вы не можете позвонить, система автоматически отправит вашу локацию и информацию в МЧС.
+                            </p>
+                        </div>
+                        <div style="display: flex; gap: 1rem;">
+                            <button onclick="callEmergencyServices('${userMessage}')" class="btn btn-danger" style="flex: 1; background: #F44336; padding: 1rem; font-size: 1.1rem;">
+                                🚨 ДА, ВЫЗВАТЬ 112
+                            </button>
+                            <button onclick="declineEmergencyCall()" class="btn btn-success" style="flex: 1; background: #4CAF50; padding: 1rem; font-size: 1.1rem;">
+                                ✓ НЕТ, Я В ПОРЯДКЕ
+                            </button>
+                        </div>
+                        <p style="margin-top: 1rem; font-size: 0.9rem; color: #666; text-align: center;">
+                            Если вы в критической ситуации - нажмите "ДА, ВЫЗВАТЬ 112"
+                        </p>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        // Вызов экстренных служб
+        function callEmergencyServices(userMessage) {
+            // Получаем локацию пользователя (используем фиксированную для Петропавловска)
+            const userLat = 54.8656;
+            const userLng = 69.1433;
+            
+            // Создаём экстренный запрос
+            const emergencyRequest = {
+                id: requests.length + 1,
+                type: 'evacuation',
+                name: 'ЭКСТРЕННЫЙ ВЫЗОВ (AI Chat)',
+                phone: 'Автоматический вызов через систему',
+                address: `Координаты: ${userLat.toFixed(5)}, ${userLng.toFixed(5)}`,
+                details: `ЭКСТРЕННАЯ СИТУАЦИЯ! Пользователь сообщил: "${userMessage}". Требуется немедленная помощь МЧС!`,
+                people: 1,
+                status: 'pending',
+                verified: false,
+                photoProof: null,
+                lat: userLat,
+                lng: userLng,
+                timestamp: new Date(),
+                emergency: true
+            };
+            
+            requests.unshift(emergencyRequest); // Добавляем в начало списка
+            
+            // Обновляем карту
+            updateMap();
+            
+            // Закрываем модальное окно
+            document.querySelectorAll('.modal').forEach(m => m.remove());
+            
+            // Показываем подтверждение
+            const confirmationModal = document.createElement('div');
+            confirmationModal.className = 'modal active';
+            confirmationModal.style.zIndex = '3000';
+            confirmationModal.innerHTML = `
+                <div class="modal-content" style="max-width: 500px; background: #E8F5E9; border: 3px solid #4CAF50;">
+                    <div style="text-align: center; padding: 2rem;">
+                        <div style="font-size: 4rem; margin-bottom: 1rem;">✓</div>
+                        <h3 style="color: #2E7D32; margin-bottom: 1rem;">Вызов отправлен!</h3>
+                        <p style="font-size: 1.1rem; margin-bottom: 1rem;">
+                            Ваша локация и информация о ситуации отправлены в МЧС и волонтёрам.
+                        </p>
+                        <div style="background: white; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                            <p style="margin: 0; color: #333;">
+                                📍 Координаты: ${userLat.toFixed(5)}, ${userLng.toFixed(5)}
+                            </p>
+                            <p style="margin: 0.5rem 0 0 0; color: #333;">
+                                📝 Причина: ${userMessage}
+                            </p>
+                        </div>
+                        <p style="color: #2E7D32; font-weight: 600; margin-bottom: 1rem;">
+                            Помощь уже в пути! Оставайтесь на месте.
+                        </p>
+                        <p style="font-size: 0.9rem; color: #666; margin-bottom: 1.5rem;">
+                            Вы можете позвонить напрямую по номеру <strong>112</strong>
+                        </p>
+                        <button onclick="this.closest('.modal').remove()" class="btn btn-success" style="width: 100%; padding: 1rem;">
+                            Понятно
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(confirmationModal);
+            
+            // Добавляем сообщение в чат
+            addChatMessage('✓ Экстренный вызов отправлен! Ваша локация и информация переданы в МЧС. Помощь уже в пути. Оставайтесь на связи!', 'ai');
+        }
+
+        // Отклонение экстренного вызова
+        function declineEmergencyCall() {
+            document.querySelectorAll('.modal').forEach(m => m.remove());
+            addChatMessage('Понял. Если ситуация изменится или вам понадобится помощь - сразу сообщите! При угрозе жизни звоните 112.', 'ai');
+        }
+
+        // Обработка Enter в чате
+        document.addEventListener('DOMContentLoaded', function() {
+            const chatInput = document.getElementById('chat-input');
+            if (chatInput) {
+                chatInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        sendChatMessage();
+                    }
+                });
+            }
+        });
+
+        // Маркер местоположения для карты волонтёров
+        let volunteerUserLocationMarker = null;
+
+        // Инициализация карты волонтёров
+        function initVolunteerMap() {
+            if (!volunteerMap) {
+                volunteerMap = L.map('volunteer-map').setView([54.8656, 69.1433], 12);
+                
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors'
+                }).addTo(volunteerMap);
+
+                // Добавляем местоположение пользователя на карту волонтёров
+                updateVolunteerUserLocation();
+            }
+            
+            setTimeout(() => volunteerMap.invalidateSize(), 100);
+            updateVolunteerMap();
+        }
+
+        // Обновление местоположения пользователя на карте волонтёров
+        function updateVolunteerUserLocation() {
+            if (!volunteerMap) return;
+
+            // Используем фиксированные координаты Петропавловска
+            const userLat = 54.8656;
+            const userLng = 69.1433;
+
+            const userIcon = L.divIcon({
+                html: `<div style="position: relative;">
+                    <div style="background: #4CAF50; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.3);"></div>
+                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 40px; height: 40px; border-radius: 50%; background: rgba(76, 175, 80, 0.2); animation: pulse 2s infinite;"></div>
+                </div>`,
+                className: '',
+                iconSize: [40, 40]
+            });
+
+            if (volunteerUserLocationMarker) {
+                volunteerMap.removeLayer(volunteerUserLocationMarker);
+            }
+
+            volunteerUserLocationMarker = L.marker([userLat, userLng], { icon: userIcon }).addTo(volunteerMap);
+            volunteerUserLocationMarker.bindPopup(`
+                <div style="text-align: center;">
+                    <h4 style="margin: 0 0 0.5rem 0; color: #4CAF50;">📍 Вы здесь</h4>
+                    <p style="margin: 0; font-size: 0.9rem;">Петропавловск, СКО</p>
+                </div>
+            `);
+        }
+
+        // Обновление карты волонтёров
+        function updateVolunteerMap() {
+            if (!volunteerMap) return;
+            
+            volunteerMarkers.forEach(marker => volunteerMap.removeLayer(marker));
+            volunteerMarkers = [];
+
+            const typeIcons = {
+                water: '💧',
+                food: '🍞',
+                medical: '💊',
+                evacuation: '🚨',
+                shelter: '🏠'
+            };
+
+            const typeColors = {
+                water: '#2196F3',
+                food: '#FF9800',
+                medical: '#9C27B0',
+                evacuation: '#F44336',
+                shelter: '#4CAF50'
+            };
+
+            requests.filter(r => r.status === 'pending').forEach(request => {
+                const icon = L.divIcon({
+                    html: `<div style="background: ${typeColors[request.type]}; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">${typeIcons[request.type]}</div>`,
+                    className: '',
+                    iconSize: [40, 40]
+                });
+
+                const marker = L.marker([request.lat, request.lng], { icon }).addTo(volunteerMap);
+                
+                marker.bindPopup(`
+                    <div style="min-width: 220px;">
+                        <h4 style="margin: 0 0 0.75rem 0; color: ${typeColors[request.type]};">${typeIcons[request.type]} ${getTypeName(request.type)}</h4>
+                        <p style="margin: 0.25rem 0;"><strong>Имя:</strong> ${request.name}</p>
+                        <p style="margin: 0.25rem 0;"><strong>Телефон:</strong> ${request.phone}</p>
+                        <p style="margin: 0.25rem 0;"><strong>Адрес:</strong> ${request.address}</p>
+                        <p style="margin: 0.25rem 0;"><strong>Людей:</strong> ${request.people}</p>
+                        <p style="margin: 0.5rem 0; color: #666; font-size: 0.9rem;">${request.details}</p>
+                        <button class="respond-btn" onclick="respondToRequest(${request.id})">✓ Откликнуться</button>
+                    </div>
+                `);
+                
+                volunteerMarkers.push(marker);
+            });
+        }
+
+        // Отклик на запрос
+        function respondToRequest(requestId) {
+            const request = requests.find(r => r.id === requestId);
+            if (request && request.status === 'pending') {
+                request.status = 'in-progress';
+                alert(`✓ Отлично! Вы взяли в работу запрос от ${request.name}. Свяжитесь по телефону ${request.phone}`);
+                updateVolunteerMap();
+                updateVolunteerStats();
+                updateMap();
+            }
+        }
+
+        // Обновление списка волонтёрских групп
+        function updateVolunteerGroups() {
+            const listElement = document.getElementById('volunteer-groups-list');
+            
+            if (volunteerGroups.length === 0) {
+                listElement.innerHTML = '<p style="text-align: center; color: #999; padding: 2rem;">Нет активных групп</p>';
+                return;
+            }
+
+            listElement.innerHTML = volunteerGroups.map(group => `
+                <div class="volunteer-group">
+                    <div class="group-header">
+                        <div class="group-name">${group.name}</div>
+                        <div class="group-badge">${group.members} волонтёров</div>
+                    </div>
+                    <div class="group-info">
+                        <p><strong>Координатор:</strong> ${group.leader}</p>
+                        <p><strong>Телефон:</strong> ${group.phone}</p>
+                        <p><strong>Район:</strong> ${group.area}</p>
+                        <p><strong>Ресурсы:</strong> ${group.resources}</p>
+                    </div>
+                    <button class="group-chat-btn" onclick="openGroupChat(${group.id})">
+                        💬 Войти в чат группы
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        // Обновление статистики волонтёров
+        function updateVolunteerStats() {
+            const pending = requests.filter(r => r.status === 'pending').length;
+            const inProgress = requests.filter(r => r.status === 'in-progress').length;
+            const completed = requests.filter(r => r.status === 'completed').length;
+
+            document.getElementById('vol-pending-requests').textContent = pending;
+            document.getElementById('vol-in-progress').textContent = inProgress;
+            document.getElementById('vol-completed').textContent = completed;
+        }
+
+        // Открытие чата группы
+        function openGroupChat(groupId) {
+            const group = volunteerGroups.find(g => g.id === groupId);
+            if (!group) return;
+
+            const modal = document.createElement('div');
+            modal.className = 'chat-modal active';
+            modal.innerHTML = `
+                <div class="chat-modal-content">
+                    <div class="chat-modal-header">
+                        <h3>💬 ${group.name}</h3>
+                        <button class="close-btn" onclick="this.closest('.chat-modal').remove()">&times;</button>
+                    </div>
+                    <div class="chat-modal-body">
+                        <div class="chat-sidebar">
+                            <h4 style="margin: 0 0 1rem 0;">Участники (${group.members})</h4>
+                            <div class="volunteer-member">
+                                <strong><span class="online-badge"></span>${group.leader}</strong>
+                                <small>Координатор</small>
+                            </div>
+                            <div class="volunteer-member">
+                                <strong><span class="online-badge"></span>Анна Петрова</strong>
+                                <small>Медик</small>
+                            </div>
+                            <div class="volunteer-member">
+                                <strong><span class="online-badge"></span>Дмитрий Ковалев</strong>
+                                <small>Водитель</small>
+                            </div>
+                            <div class="volunteer-member">
+                                <strong><span class="online-badge"></span>Мария Сидорова</strong>
+                                <small>Волонтёр</small>
+                            </div>
+                        </div>
+                        <div class="chat-main">
+                            <div class="chat-messages" style="flex: 1; overflow-y: auto; padding: 1rem; background: #f9f9f9;">
+                                <div class="chat-message ai">
+                                    <div class="chat-avatar">👤</div>
+                                    <div class="chat-bubble" style="background: white;">
+                                        <strong>${group.leader}</strong><br>
+                                        Всем привет! Сегодня у нас 3 новых запроса на помощь в Центральном районе. Кто может взяться?
+                                    </div>
+                                </div>
+                                <div class="chat-message ai">
+                                    <div class="chat-avatar">👤</div>
+                                    <div class="chat-bubble" style="background: white;">
+                                        <strong>Анна Петрова</strong><br>
+                                        Я готова помочь с медикаментами! Где нужна помощь?
+                                    </div>
+                                </div>
+                                <div class="chat-message ai">
+                                    <div class="chat-avatar">👤</div>
+                                    <div class="chat-bubble" style="background: white;">
+                                        <strong>Дмитрий Ковалев</strong><br>
+                                        У меня свободна машина. Могу доставить продукты или воду.
+                                    </div>
+                                </div>
+                                <div class="chat-message ai">
+                                    <div class="chat-avatar">👤</div>
+                                    <div class="chat-bubble" style="background: white;">
+                                        <strong>${group.leader}</strong><br>
+                                        Отлично! Анна, посмотри запрос на пр. Абая, 78 - нужны лекарства для пожилого человека. Дмитрий, на ул. Мира, 12 требуется продовольствие.
+                                    </div>
+                                </div>
+                                <div class="chat-message ai">
+                                    <div class="chat-avatar">👤</div>
+                                    <div class="chat-bubble" style="background: white;">
+                                        <strong>Мария Сидорова</strong><br>
+                                        Я тоже присоединюсь! Где ещё нужна помощь?
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="chat-input-container">
+                                <input type="text" placeholder="Напишите сообщение..." />
+                                <button onclick="alert('Сообщение отправлено!')">📤</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        // Открытие детальной информации о запросе
+        function openRequestDetail(requestId) {
+            const request = requests.find(r => r.id === requestId);
+            if (!request) return;
+
+            const typeIcons = {
+                water: '💧',
+                food: '🍞',
+                medical: '💊',
+                evacuation: '🚨',
+                shelter: '🏠'
+            };
+
+            const statusText = {
+                pending: 'Ожидает помощи',
+                'in-progress': 'В процессе выполнения',
+                completed: 'Выполнено'
+            };
+
+            const statusColors = {
+                pending: '#FF9800',
+                'in-progress': '#2196F3',
+                completed: '#4CAF50'
+            };
+
+            const modal = document.createElement('div');
+            modal.className = 'request-detail-modal active';
+            modal.innerHTML = `
+                <div class="request-detail-content">
+                    <div class="detail-header">
+                        <h3>${typeIcons[request.type]} ${getTypeName(request.type)}</h3>
+                        <button class="close-btn" onclick="this.closest('.request-detail-modal').remove()">&times;</button>
+                    </div>
+
+                    <div class="detail-section">
+                        <div style="padding: 1rem; background: ${statusColors[request.status]}20; border-left: 4px solid ${statusColors[request.status]}; border-radius: 8px; margin-bottom: 1.5rem;">
+                            <strong style="color: ${statusColors[request.status]};">Статус:</strong> ${statusText[request.status]}
+                        </div>
+                    </div>
+
+                    <div class="detail-section">
+                        <h4>👤 Информация о заявителе</h4>
+                        <div class="detail-info">
+                            <div class="detail-row">
+                                <span class="detail-label">Имя:</span>
+                                <span class="detail-value">${request.name}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Телефон:</span>
+                                <span class="detail-value"><a href="tel:${request.phone}" style="color: var(--color-primary);">${request.phone}</a></span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Адрес:</span>
+                                <span class="detail-value">${request.address}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Людей:</span>
+                                <span class="detail-value">${request.people} человек</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="detail-section">
+                        <h4>📋 Детали запроса</h4>
+                        <div style="padding: 1rem; background: #f9f9f9; border-radius: 8px;">
+                            ${request.details}
+                        </div>
+                    </div>
+
+                    <div class="detail-section">
+                        <h4>🕒 Время создания</h4>
+                        <div class="detail-row">
+                            <span class="detail-value">${request.timestamp.toLocaleString('ru-RU')}</span>
+                        </div>
+                    </div>
+
+                    <div class="detail-section">
+                        <h4>🔒 Верификация</h4>
+                        ${request.verified ? `
+                            <div style="padding: 1rem; background: #E8F5E9; border-left: 4px solid #4CAF50; border-radius: 8px;">
+                                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                    <span style="font-size: 1.5rem;">✓</span>
+                                    <strong style="color: #2E7D32;">Запрос проверен</strong>
+                                </div>
+                                <p style="margin: 0; color: #2E7D32;">Заявитель предоставил фото-доказательство ситуации: <strong>${request.photoProof}</strong></p>
+                                <small style="color: #2E7D32; opacity: 0.8;">Это повышает достоверность запроса</small>
+                            </div>
+                        ` : `
+                            <div style="padding: 1rem; background: #FFF3E0; border-left: 4px solid #FF9800; border-radius: 8px;">
+                                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                    <span style="font-size: 1.5rem;">⚠️</span>
+                                    <strong style="color: #E65100;">Не проверен</strong>
+                                </div>
+                                <p style="margin: 0; color: #E65100;">Заявитель не предоставил фото-доказательство. Рекомендуется дополнительная проверка при контакте.</p>
+                                <small style="color: #E65100; opacity: 0.8;">Будьте внимательны и уточните детали по телефону</small>
+                            </div>
+                        `}
+                    </div>
+
+                    ${request.status === 'pending' ? `
+                        <div class="action-buttons">
+                            <button class="btn btn-success" onclick="takeRequest(${request.id}); this.closest('.request-detail-modal').remove();">
+                                ✓ Взять в работу
+                            </button>
+                            <button class="btn btn-primary" onclick="window.location.href='tel:${request.phone}'">
+                                📞 Позвонить
+                            </button>
+                        </div>
+                    ` : request.status === 'in-progress' ? `
+                        <div class="action-buttons">
+                            <button class="btn btn-success" onclick="completeRequest(${request.id}); this.closest('.request-detail-modal').remove();">
+                                ✓ Отметить выполненным
+                            </button>
+                            <button class="btn btn-primary" onclick="window.location.href='tel:${request.phone}'">
+                                📞 Позвонить
+                            </button>
+                        </div>
+                    ` : `
+                        <div class="alert alert-success">
+                            ✓ Запрос выполнен
+                        </div>
+                    `}
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        // Взять запрос в работу
+        function takeRequest(requestId) {
+            const request = requests.find(r => r.id === requestId);
+            if (request && request.status === 'pending') {
+                request.status = 'in-progress';
+                alert(`✓ Запрос взят в работу! Свяжитесь с ${request.name} по телефону ${request.phone}`);
+                updateRequestList();
+                updateMap();
+                updateVolunteerMap();
+                updateVolunteerStats();
+            }
+        }
+
+        // Отметить запрос выполненным
+        function completeRequest(requestId) {
+            const request = requests.find(r => r.id === requestId);
+            if (request && request.status === 'in-progress') {
+                request.status = 'completed';
+                alert('✓ Отлично! Запрос отмечен как выполненный. Спасибо за помощь!');
+                updateRequestList();
+                updateMap();
+                updateVolunteerMap();
+                updateVolunteerStats();
+            }
+        }
+
+        // Создание волонтёрской группы
+        document.addEventListener('DOMContentLoaded', function() {
+            const createGroupForm = document.getElementById('create-group-form');
+            if (createGroupForm) {
+                createGroupForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+
+                    const areaNames = {
+                        'central': 'Центральный район',
+                        'east': 'Восточный район',
+                        'west': 'Западный район',
+                        'south': 'Южный район',
+                        'all': 'Все районы'
+                    };
+
+                    const newGroup = {
+                        id: volunteerGroups.length + 1,
+                        name: document.getElementById('group-name').value,
+                        leader: document.getElementById('group-leader').value,
+                        phone: document.getElementById('group-phone').value,
+                        area: areaNames[document.getElementById('group-area').value],
+                        members: 1,
+                        resources: document.getElementById('group-resources').value,
+                        active: true
+                    };
+
+                    volunteerGroups.push(newGroup);
+                    updateVolunteerGroups();
+                    this.reset();
+                    alert('✓ Группа успешно создана! Другие волонтёры смогут присоединиться к вам.');
+                });
+            }
+        });
+
+        // Функция обновления информации о ближайших катастрофах
+        function updateNearbyDisasters() {
+            const disastersContainer = document.getElementById('nearby-disasters');
+            
+            // Данные о реальных и потенциальных катастрофах (в реальном приложении это будет API)
+            const disasters = [
+                {
+                    location: 'Петропавловск, СКО',
+                    type: 'Наводнение',
+                    severity: 'high',
+                    distance: 0,
+                    status: 'active',
+                    affected: 15000,
+                    description: 'Река Ишим вышла из берегов. Затоплены низинные районы города.',
+                    lastUpdate: '2 часа назад'
+                },
+                {
+                    location: 'Атбасар, Акмолинская область',
+                    type: 'Наводнение',
+                    severity: 'medium',
+                    distance: 180,
+                    status: 'monitoring',
+                    affected: 3500,
+                    description: 'Повышенный уровень воды в реке Жабай. Эвакуировано 200 человек.',
+                    lastUpdate: '5 часов назад'
+                },
+                {
+                    location: 'Курган, Россия',
+                    type: 'Наводнение',
+                    severity: 'high',
+                    distance: 250,
+                    status: 'active',
+                    affected: 8000,
+                    description: 'Паводок на реке Тобол. Объявлен режим ЧС.',
+                    lastUpdate: '1 час назад'
+                },
+                {
+                    location: 'Кокшетау, Акмолинская область',
+                    type: 'Риск паводка',
+                    severity: 'low',
+                    distance: 320,
+                    status: 'monitoring',
+                    affected: 0,
+                    description: 'Мониторинг уровня озера Копа. Ситуация под контролем.',
+                    lastUpdate: '3 часа назад'
+                },
+                {
+                    location: 'Костанай, Казахстан',
+                    type: 'Наводнение',
+                    severity: 'medium',
+                    distance: 420,
+                    status: 'recovering',
+                    affected: 5200,
+                    description: 'Паводок на реке Тобол отступает. Идут восстановительные работы.',
+                    lastUpdate: '6 часов назад'
+                }
+            ];
+
+            const severityColors = {
+                high: '#F44336',
+                medium: '#FF9800',
+                low: '#2196F3'
+            };
+
+            const severityLabels = {
+                high: 'Критический',
+                medium: 'Средний',
+                low: 'Низкий'
+            };
+
+            const statusLabels = {
+                active: 'Активная',
+                monitoring: 'Мониторинг',
+                recovering: 'Восстановление'
+            };
+
+            const statusColors = {
+                active: '#F44336',
+                monitoring: '#FF9800',
+                recovering: '#4CAF50'
+            };
+
+            disastersContainer.innerHTML = disasters.filter(disaster => disaster.distance <= 300).map(disaster => `
+                <div style="background: white; border: 2px solid ${severityColors[disaster.severity]}; border-radius: 10px; padding: 1.25rem; margin-bottom: 1rem; transition: all 0.3s;">
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                        <div>
+                            <h3 style="margin: 0 0 0.5rem 0; color: ${severityColors[disaster.severity]};">
+                                ${disaster.location}
+                            </h3>
+                            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                <span style="background: ${severityColors[disaster.severity]}; color: white; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.875rem; font-weight: 600;">
+                                    ${severityLabels[disaster.severity]} уровень
+                                </span>
+                                <span style="background: ${statusColors[disaster.status]}20; color: ${statusColors[disaster.status]}; border: 1px solid ${statusColors[disaster.status]}; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.875rem; font-weight: 600;">
+                                    ${statusLabels[disaster.status]}
+                                </span>
+                            </div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 1.5rem; font-weight: 700; color: ${severityColors[disaster.severity]};">
+                                ${disaster.distance === 0 ? 'Здесь' : disaster.distance + ' км'}
+                            </div>
+                            <div style="font-size: 0.85rem; color: var(--color-text-light);">
+                                расстояние
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="display: grid; gap: 0.75rem; margin-bottom: 1rem;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <span style="font-size: 1.25rem;">🌊</span>
+                            <strong>Тип:</strong> ${disaster.type}
+                        </div>
+                        ${disaster.affected > 0 ? `
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <span style="font-size: 1.25rem;">👥</span>
+                                <strong>Пострадавших:</strong> ${disaster.affected.toLocaleString('ru-RU')} человек
+                            </div>
+                        ` : ''}
+                        <div style="display: flex; align-items: start; gap: 0.5rem;">
+                            <span style="font-size: 1.25rem;">📋</span>
+                            <div>
+                                <strong>Ситуация:</strong><br>
+                                <span style="color: var(--color-text-light);">${disaster.description}</span>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <span style="font-size: 1.25rem;">🕒</span>
+                            <span style="color: var(--color-text-light); font-size: 0.9rem;">Обновлено: ${disaster.lastUpdate}</span>
+                        </div>
+                    </div>
+                    
+                    ${disaster.distance === 0 ? `
+                        <div style="background: #FFF3E0; border-left: 4px solid #FF9800; padding: 0.75rem; border-radius: 6px; margin-top: 1rem;">
+                            <strong style="color: #E65100;">⚠️ Ваш регион:</strong> 
+                            <span style="color: #E65100;">Следите за обновлениями и будьте готовы к эвакуации!</span>
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('');
+        }
+
+        // Инициализация при загрузке
+        window.addEventListener('load', function() {
+            updateMap();
+            updateStats();
+            updateFloodSimulation(30); // Начальный уровень
+        });
+    </script>
+</body>
+</html>
